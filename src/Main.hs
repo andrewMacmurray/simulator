@@ -96,8 +96,7 @@ printMarkets markets = do
   mapM_ printMarket markets
   putStrLn "---"
   delay 1000
-  openMarkets <- mapM checkMarketOpen markets
-  let stillTrading = or openMarkets
+  stillTrading <- or <$> mapM checkMarketOpen markets
   if stillTrading then
     printMarkets markets
   else do
@@ -142,9 +141,11 @@ emitTrade market mt =
     Just t  -> continueTrading t
     Nothing -> closeMarket
     where
-      continueTrading t = atomically market (\(OPEN m) -> OPEN $ aggregateTrade t m)
-      closeMarket       = atomically market (\(OPEN m) -> CLOSED m)
-      atomically mv f   = takeMVar mv >>= (putMVar mv . f)
+      continueTrading t   = updateMarket (return . continue t)
+      closeMarket         = updateMarket (return . close)
+      updateMarket        = modifyMVar_ market
+      close (OPEN m)      = CLOSED m
+      continue t (OPEN m) = OPEN $ aggregateTrade t m
 
 
 replayCsv :: FilePath -> Producer (Maybe Trade) IO ()

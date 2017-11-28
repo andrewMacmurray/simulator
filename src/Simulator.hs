@@ -1,4 +1,4 @@
-module Simulator where
+module Main where
 
 import           Control.Applicative  ((<*))
 import           Control.Concurrent   hiding (yield)

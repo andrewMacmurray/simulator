@@ -9,20 +9,18 @@ import           Data.Csv             (HasHeader (NoHeader))
 import qualified Data.Csv.Streaming   as S
 import           Data.Vector          (Vector)
 import           Pipes
-import           System.IO
+import           System.Environment   (getArgs)
+import           System.IO            (BufferMode (..), hSetBuffering, stdout)
 import           Types
 
 main :: IO ()
 main = do
+  files <- getArgs
   hSetBuffering stdout LineBuffering
-  aggregateAndLog $ map replayCsv paths
+  aggregateAndLog . map (replayCsv . folderExt) $ files
 
-paths :: [String]
-paths = map ("./markets/" ++)
-  [ "market_a.csv"
-  , "market_b.csv"
-  , "market_c.csv"
-  ]
+folderExt :: String -> String
+folderExt = (++) "./markets/"
 
 aggregateAndLog :: [Producer (Maybe Order) IO ()] -> IO ()
 aggregateAndLog mkts = do
@@ -51,10 +49,9 @@ logMarkets = mapM_ $ readMVar >=> print
 runMarket :: MVar Market -> Producer (Maybe Order) IO () -> IO ()
 runMarket mv mkt = runEffect . for mkt $ update mv
   where
-    update mv (Just x) = io . swapMVar mv $ OPEN x
-    update mv Nothing  = io . modifyMVar_ mv $ return . closeMkt
-    closeMkt (OPEN x)  = CLOSED x
-    io                 = void . liftIO
+    update mv (Just x) = io_ . swapMVar mv $ OPEN x
+    update mv Nothing  = io_ . modifyMVar_ mv $ return . closeMarket
+    io_                = void . liftIO
 
 replayCsv :: FilePath -> Producer (Maybe Order) IO ()
 replayCsv x = decodeMarket x >>= pipe

@@ -80,3 +80,6 @@ aggregate (Trade _ GBP n SELL) Order{..} = Order usd eur (gbp + n)
 isOpen :: Market -> Bool
 isOpen (OPEN _)   = True
 isOpen (CLOSED _) = False
+
+closeMarket :: Market -> Market
+closeMarket (OPEN x) = CLOSED x
